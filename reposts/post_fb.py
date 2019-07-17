@@ -3,18 +3,22 @@ from dotenv import load_dotenv
 
 
 def post_message_on_wall(access_token, message, group_id):
-    """Выкладывает пост на стену"""
+    """Выкладывает пост на стену."""
     payload = {
         'message':message,
         'access_token':access_token,
     }
 
     url = 'https://graph.facebook.com/v3.3/{}/feed'.format(group_id)
-    requests.post(url, params=payload)
+    response = requests.post(url, params=payload)
+    response.raise_for_status()
+
+    if 'error' in response.text:
+        raise requests.exceptions.HTTPError()
 
 
 def post_photo_on_wall(filepath, caption, access_token, group_id):
-    """Выкладываем фотография на стену группы"""
+    """Выкладываем фотография на стену группы."""
     with open(filepath, 'rb') as photo_file:
         files = {
             'file': photo_file,
@@ -26,17 +30,20 @@ def post_photo_on_wall(filepath, caption, access_token, group_id):
         }
 
         url = 'https://graph.facebook.com/v3.3/{}/photos'.format(group_id)
-        requests.post(url, files=files, params=payload)
+        response = requests.post(url, files=files, params=payload)
+        response.raise_for_status()
+
+        if 'error' in response.text:
+            raise requests.exceptions.HTTPError()
 
 
 def post_facebook(image_filepath=None, text_filepath=None):
-    load_dotenv()
     access_token = os.getenv("FB_ACCESS_TOKEN")
-    group_id = str(os.getenv("FB_GROUP_ID"))
+    group_id = os.getenv("FB_GROUP_ID")
     text = ''
 
     if image_filepath is None and text_filepath is None:
-        return
+        raise ValueError('А что постим? Укажите путь до текста или картинки.')
 
     if text_filepath is not None:
         with open(text_filepath, 'r', encoding="utf-8") as text_file:
@@ -49,10 +56,23 @@ def post_facebook(image_filepath=None, text_filepath=None):
 
 
 def main():
+    load_dotenv()
     image_filepath = r'D:\files\пример для картинки.png'
     text_filepath = r'D:\files\пример для теста.txt'
 
-    post_facebook(image_filepath, text_filepath)
+    try:
+        post_facebook(image_filepath, text_filepath=text_filepath)
+    except ValueError as no_files_for_post:
+        print(no_files_for_post)
+
+    except requests.exceptions.HTTPError:
+        print('Ошибочный запрос')
+
+    except requests.exceptions.ConnectionError:
+        print('Отсутствует сетевое соединение')
+
+    except requests.exceptions.ConnectTimeout:
+        print('Превышено время ожидания')
 
 
 if __name__ == "__main__":

@@ -4,13 +4,18 @@ from dotenv import load_dotenv
 
 def get_vk(method, payload):
     url = 'https://api.vk.com/method/{}?v=5.95'.format(method)
+
     response = requests.get(url, params=payload)
+    response.raise_for_status()
+
+    if 'error' in response.text:
+        raise requests.exceptions.HTTPError()
 
     return response.json().get('response')
 
 
 def get_server_address_to_upload_album_photos(access_token, album_id, group_id):
-    """Получение url для загрузки фотографии в альбом"""
+    """Получение url для загрузки фотографии в альбом."""
     method = 'photos.getUploadServer'
     payload = {
         'album_id':album_id,
@@ -23,7 +28,7 @@ def get_server_address_to_upload_album_photos(access_token, album_id, group_id):
 
 
 def upload_photo(upload_url, filepath, caption):
-    """Загрузка фотографии"""
+    """Загрузка фотографии."""
     hash = None
     server = None
     photos_list = None
@@ -36,6 +41,11 @@ def upload_photo(upload_url, filepath, caption):
                 }
 
         response = requests.post(upload_url, files=files)
+        response.raise_for_status()
+
+        if 'error' in response.text:
+            raise requests.exceptions.HTTPError()
+
         if response is not None:
             hash = response.json()['hash']
             server = response.json()['server']
@@ -45,7 +55,7 @@ def upload_photo(upload_url, filepath, caption):
 
 
 def save_album_photo(access_token, album_id, group_id, photos_list, hash, server, caption):
-    """Cохранение фотографии в альбом"""
+    """Cохранение фотографии в альбом."""
     method = 'photos.save'
     payload = {
         'album_id':album_id,
@@ -62,9 +72,9 @@ def save_album_photo(access_token, album_id, group_id, photos_list, hash, server
 
 
 def post_on_wall(access_token, message, group_id, attachments=''):
-    """Выкладывает пост на стену
-       Если attachments не указан, выкладывается только сообщение
-       Если attachments указан, выкладывается фотография
+    """Выкладывает пост на стену.
+       Если attachments не указан, выкладывается только сообщение.
+       Если attachments указан, выкладывается фотография.
     """
     method = 'wall.post'
     payload = {
@@ -96,14 +106,13 @@ def post_image(access_token, group_id, album_id, filepath, caption):
 
 
 def post_vkontakte(image_filepath=None, text_filepath=None):
-    load_dotenv()
     access_token = os.getenv("VK_ACCESS_TOKEN")
     group_id = os.getenv("VK_GROUP_ID")
     album_id = os.getenv("VK_ALBUM_ID")
     text = ''
 
     if image_filepath is None and text_filepath is None:
-        return
+        raise ValueError('А что постим? Укажите путь до текста или картинки.')
 
     if text_filepath is not None:
         with open(text_filepath, 'r', encoding="utf-8") as text_file:
@@ -116,11 +125,24 @@ def post_vkontakte(image_filepath=None, text_filepath=None):
 
 
 def main():
+    load_dotenv()
     image_filepath = r'D:\files\пример для картинки.png'
     text_filepath = r'D:\files\пример для теста.txt'
+    try:
+        post_vkontakte(image_filepath, text_filepath)
+    except ValueError as no_files_for_post:
+        print(no_files_for_post)
 
-    post_vkontakte(image_filepath, text_filepath)
+    except requests.exceptions.HTTPError:
+        print('Ошибочный запрос')
+
+    except requests.exceptions.ConnectionError:
+        print('Отсутствует сетевое соединение')
+
+    except requests.exceptions.ConnectTimeout:
+        print('Превышено время ожидания')
 
 
+# raise requests.exceptions.HTTPError()
 if __name__ == "__main__":
   main()

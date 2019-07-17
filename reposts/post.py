@@ -1,23 +1,25 @@
-import argparse, post_fb, post_tg, post_vk
+import argparse, post_fb, post_tg, post_vk, requests
+from dotenv import load_dotenv
 
 
-def posts(social_network, image_filepath, text_filepath):
-    if 'vk' in social_network:
+def post_to_social_networks(social_networks, image_filepath, text_filepath):
+    if 'vk' in social_networks:
         post_vk.post_vkontakte(image_filepath, text_filepath)
 
-    if 'tg' in social_network:
+    if 'tg' in social_networks:
         post_tg.post_telegram(image_filepath, text_filepath)
 
-    if 'fb' in social_network:
+    if 'fb' in social_networks:
         post_fb.post_facebook(image_filepath, text_filepath)
 
 
 def main():
+    load_dotenv()
     parser = argparse.ArgumentParser(
        description='''Размещаем пост в Telegram-канале и группах Вконтакте и Facebook'''
     )
-    parser.add_argument('--social_network',
-            help='''Укажите в какую социальную сеть необходимо опубликовать пост:
+    parser.add_argument('--social_networks', default='vk,fb,tg',
+            help='''Укажите в какие социальные сети необходимо опубликовать пост:
                             vk - будет опубликован в группе Вконтакте,
                             tg - будет опубликован в Telegram-канале,
                             fb - будет опубликован в группе Facebook,
@@ -28,16 +30,23 @@ def main():
             help='''Укажите путь до файла с текстом''')
 
     args = parser.parse_args()
-    social_network = args.social_network if args.social_network else 'vk,fb,tg'
+    social_networks = args.social_networks
     image_filepath = args.image_filepath
     text_filepath = args.text_filepath
 
-    if image_filepath is None and text_filepath is None:
-        print ('А что постим? Укажите путь до текста или картинки.')
-        return
+    try:
+        post_to_social_networks(social_networks, image_filepath, text_filepath)
+    except ValueError as no_files_for_post:
+        print(no_files_for_post)
 
-    posts(social_network, image_filepath, text_filepath)
+    except requests.exceptions.HTTPError:
+        print('Ошибочный запрос')
 
+    except requests.exceptions.ConnectionError:
+        print('Отсутствует сетевое соединение')
+
+    except requests.exceptions.ConnectTimeout:
+        print('Превышено время ожидания')
 
 if __name__ == "__main__":
   main()
