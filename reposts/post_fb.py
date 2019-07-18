@@ -2,6 +2,23 @@ import os, requests
 from dotenv import load_dotenv
 
 
+class Error(Exception):
+    def __init__(self, message):
+        self.expression = 'Facebook'
+        self.message = message
+
+    def __str__(self):
+        return '{} в модуле {}.'.format(self.message, self.expression)
+
+
+class FilesForPosttError(Error):
+    pass
+
+
+class HTTPError(Error):
+    pass
+
+
 def post_message_on_wall(access_token, message, group_id):
     """Выкладывает пост на стену."""
     payload = {
@@ -14,7 +31,7 @@ def post_message_on_wall(access_token, message, group_id):
     response.raise_for_status()
 
     if 'error' in response.text:
-        raise requests.exceptions.HTTPError()
+        raise HTTPError('Ошибка при размещении сообщения на стену группы')
 
 
 def post_photo_on_wall(filepath, caption, access_token, group_id):
@@ -34,7 +51,7 @@ def post_photo_on_wall(filepath, caption, access_token, group_id):
         response.raise_for_status()
 
         if 'error' in response.text:
-            raise requests.exceptions.HTTPError()
+            raise HTTPError('Ошибка при размещении фотографи на стену группы')
 
 
 def post_facebook(image_filepath=None, text_filepath=None):
@@ -43,7 +60,7 @@ def post_facebook(image_filepath=None, text_filepath=None):
     text = ''
 
     if image_filepath is None and text_filepath is None:
-        raise ValueError('А что постим? Укажите путь до текста или картинки.')
+        raise FilesForPosttError('А что постим? Укажите путь до текста или картинки. Ошибка')
 
     if text_filepath is not None:
         with open(text_filepath, 'r', encoding="utf-8") as text_file:
@@ -62,11 +79,14 @@ def main():
 
     try:
         post_facebook(image_filepath, text_filepath=text_filepath)
-    except ValueError as no_files_for_post:
+    except FilesForPosttError as no_files_for_post:
         print(no_files_for_post)
 
-    except requests.exceptions.HTTPError:
-        print('Ошибочный запрос')
+    except HTTPError as requests_error:
+        print(requests_error)
+
+    except FileNotFoundError as file_not_found:
+        print("Файл для поста '{}' не найден.".format(file_not_found.filename))
 
     except requests.exceptions.ConnectionError:
         print('Отсутствует сетевое соединение')

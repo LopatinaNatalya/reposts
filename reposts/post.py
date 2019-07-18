@@ -36,11 +36,12 @@ def main():
 
     try:
         post_to_social_networks(social_networks, image_filepath, text_filepath)
-    except ValueError as no_files_for_post:
-        print(no_files_for_post)
 
-    except requests.exceptions.HTTPError:
-        print('Ошибочный запрос')
+    except (post_vk.Error, post_tg.Error, post_fb.Error) as post_error:
+        print(post_error)
+
+    except FileNotFoundError as file_not_found:
+        print("Файл для поста '{}' не найден.".format(file_not_found.filename))
 
     except requests.exceptions.ConnectionError:
         print('Отсутствует сетевое соединение')

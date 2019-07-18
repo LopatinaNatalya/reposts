@@ -1,6 +1,18 @@
 import os, telegram
 from dotenv import load_dotenv
 
+class Error(Exception):
+    def __init__(self, message):
+        self.expression = 'Telegram-канале'
+        self.message = message
+
+    def __str__(self):
+        return '{} в модуле {}.'.format(self.message, self.expression)
+
+
+class FilesForPosttError(Error):
+    pass
+
 
 def post_image(bot, chat_id, image_filepath, caption):
     with open(image_filepath, 'rb') as photo_file:
@@ -14,7 +26,7 @@ def post_telegram(image_filepath=None, text_filepath=None):
     text = ''
 
     if image_filepath is None and text_filepath is None:
-        raise ValueError('А что постим? Укажите путь до текста или картинки.')
+        raise FilesForPosttError('А что постим? Укажите путь до текста или картинки. Ошибка')
 
     if text_filepath is not None:
         with open(text_filepath, 'r', encoding="utf-8") as text_file:
@@ -33,8 +45,11 @@ def main():
 
     try:
         post_telegram(image_filepath, text_filepath=text_filepath)
-    except ValueError as no_files_for_post:
+    except FilesForPosttError as no_files_for_post:
         print(no_files_for_post)
+
+    except FileNotFoundError as file_not_found:
+        print("Файл для поста '{}' не найден.".format(file_not_found.filename))
 
 
 if __name__ == "__main__":
